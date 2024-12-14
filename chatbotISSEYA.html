@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot de Vente de Vêtements</title>
+    <link rel="stylesheet" href="chatbot.css">
+</head>
+<body>
+    <div class="chatbot-container">
+        <div class="chat-header">
+            <h2>IssEya Mode</h2>
+            <p>Votre assistant de shopping en ligne</p>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="chat-input">
+            <input type="text" id="user-input" placeholder="Posez une question..." autocomplete="off" />
+            <button onclick="sendMessage()">Envoyer</button>
+            <button onclick="sendMessage()">Ajouter jeans</button>
+
+        </div>
+        <div class="product-buttons">
+            <button onclick="sendMessageByButton('liste homme')">Produits Homme</button>
+            <button onclick="sendMessageByButton('liste femme')">Produits Femme</button>
+            <button onclick="sendMessageByButton('total')">Voir Panier</button>
+            <button onclick="sendMessageByButton('commander')">Commander</button>
+        </div>
+    </div>
+    <script>
+        const products = [
+            { category: "homme", name: "Jeans", price: 90, sizes: ["M", "L", "XL"], colors: ["Bleu", "Noir"], description: "Jeans homme en denim." },
+            { category: "homme", name: "Chemise", price: 80, sizes: ["M", "L", "XL"], colors: ["Blanc", "Bleu", "Noir"], description: "Chemise classique en coton." },
+            { category: "femme", name: "Crop Top", price: 50, sizes: ["S", "M", "L"], colors: ["Blanc", "Rose", "Noir"], description: "Crop top tendance." },
+            { category: "femme", name: "Talons", price: 200, sizes: ["36", "38", "40"], colors: ["Rouge", "Noir", "Beige"], description: "Chaussures à talons élégantes." },
+            { category: "femme", name: "Jupe", price: 50, sizes: ["36", "38", "40"], colors: ["Rouge", "Noir", "Beige", "Bleu"], description: "Jupe mini." },
+            { category: "femme", name: "Robe", price: 160, sizes: ["34", "36", "38", "40", "42"], colors: ["Rouge", "Noir", "Beige", "Blanc"], description: "Robe soirée." }
+        ];
+
+        let cart = [];
+
+        function sendMessage() {
+            const userInput = document.getElementById('user-input').value.trim();
+            if (userInput === "") return;
+            addMessage(userInput, "user-message");
+            processUserInput(userInput.toLowerCase());
+            document.getElementById('user-input').value = "";
+        }
+
+        function addMessage(text, className, isHTML = false) {
+            const message = document.createElement('div');
+            message.className = `message ${className}`;
+            if (isHTML) {
+                message.innerHTML = text;
+            } else {
+                message.innerText = text;
+            }
+            document.getElementById('chat-messages').appendChild(message);
+            document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+        }
+
+        function processUserInput(input) {
+            let response = "Je n'ai pas compris votre demande. Essayez 'liste homme', 'liste femme', ou 'ajouter [produit]'.";
+
+            if (input === "liste homme" || input === "liste femme") {
+                const category = input.split(" ")[1];
+                response = `Produits pour ${category}s :\n` + getProductList(category);
+            } else if (input.includes("ajouter")) {
+                const productName = input.split("ajouter ")[1];
+                const product = products.find(p => p.name.toLowerCase() === productName);
+                if (product) {
+                    showCustomizationOptions(product);
+                    return;
+                } else {
+                    response = "Produit introuvable.";
+                }
+            } else if (input === "total") {
+                response = getCartSummary();
+            } else if (input === "commander") {
+                response = confirmOrder();
+            }
+
+            addMessage(response, "bot-message");
+        }
+
+        function getProductList(category) {
+            return products.filter(p => p.category === category).map(p => `${p.name} - ${p.price} TND`).join("\n");
+        }
+
+        function showCustomizationOptions(product) {
+            const sizeOptions = product.sizes.map(size => `<option value="${size}">${size}</option>`).join("");
+            const colorOptions = product.colors.map(color => `<option value="${color}">${color}</option>`).join("");
+
+            const customizationMessage = `
+                <p>Choisissez une taille et une couleur pour ${product.name} :</p>
+                <select id="size-select">${sizeOptions}</select>
+                <select id="color-select">${colorOptions}</select>
+                <button onclick="addToCart('${product.name}')">Ajouter au Panier</button>
+            `;
+
+            addMessage(customizationMessage, "bot-message", true);
+        }
+
+        function addToCart(productName) {
+            const size = document.getElementById('size-select').value;
+            const color = document.getElementById('color-select').value;
+
+            const product = products.find(p => p.name === productName);
+            if (product) {
+                cart.push({ ...product, selectedSize: size, selectedColor: color });
+                addMessage(`${product.name} (${size}, ${color}) a été ajouté à votre panier.`, "bot-message");
+            }
+        }
+
+        function getCartSummary() {
+            if (cart.length === 0) return "Votre panier est vide.";
+
+            let total = cart.reduce((sum, item) => sum + item.price, 0);
+            let cartDetails = cart.map((item, index) => `${index + 1}. ${item.name} (${item.selectedSize}, ${item.selectedColor}) - ${item.price} TND`).join("\n");
+
+            return `${cartDetails}\n\nTotal : ${total} TND`;
+        }
+
+        function confirmOrder() {
+            if (cart.length === 0) return "Votre panier est vide. Ajoutez des produits avant de commander.";
+
+            let total = cart.reduce((sum, item) => sum + item.price, 0);
+            let orderDetails = cart.map((item, index) => `${index + 1}. ${item.name} (${item.selectedSize}, ${item.selectedColor}) - ${item.price} TND`).join("\n");
+
+            cart = []; // Clear cart after confirming order
+
+            return `Commande confirmée !\n${orderDetails}\nTotal : ${total} TND`;
+        }
+
+        function sendMessageByButton(buttonInput) {
+            addMessage(buttonInput, "user-message");
+            processUserInput(buttonInput.toLowerCase());
+        }
+    </script>
+</body>
+</html>
